@@ -12,7 +12,7 @@ import sys
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from scipy.stats import norm
+from scipy.stats import norm, skew, kurtosis
 
 LOOKBACK_DAYS = 500
 CONFIDENCE = 0.99
@@ -180,6 +180,97 @@ def confidence_table(port_returns, total, confidence=CONFIDENCE, horizons=HORIZO
 
 
 # ---------------------------------------------------------------------------
+# Bell curve
+# ---------------------------------------------------------------------------
+
+def plot_bell_curve(port_returns, total, confidence=CONFIDENCE,
+                    path="risk_bell_curve.png", show=False):
+    """Histogram of daily portfolio returns with a fitted normal bell curve.
+
+    Shades the loss tail beyond the one-sided VaR and marks the two-sided
+    confidence interval, so you can see how well the normal model fits.
+    """
+    import matplotlib
+    if not show:
+        matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    blue, red, ink, muted, grid = "#2a78d6", "#e34948", "#0b0b0b", "#52514e", "#e4e3df"
+    pct = f"{confidence:.0%}"
+    r = port_returns * 100  # percent
+    mu, sigma = r.mean(), r.std()
+    z_one = norm.ppf(confidence)
+    z_two = norm.ppf(1 - (1 - confidence) / 2)
+    param_var = mu - z_one * sigma
+    hist_var = r.quantile(1 - confidence)
+    low, high = mu - z_two * sigma, mu + z_two * sigma
+
+    fig, ax = plt.subplots(figsize=(11, 6), facecolor="#fcfcfb")
+    ax.set_facecolor("#fcfcfb")
+
+    ax.hist(r, bins=50, density=True, color=blue, alpha=0.35,
+            edgecolor="#fcfcfb", linewidth=1, label=f"Actual daily returns ({len(r)} days)")
+
+    span = max(abs(r.min() - mu), abs(r.max() - mu), 4.5 * sigma)
+    x = np.linspace(mu - span, mu + span, 600)
+    y = norm.pdf(x, mu, sigma)
+    ax.plot(x, y, color=blue, linewidth=2, label="Normal bell curve (fitted)")
+
+    tail = x <= param_var
+    ax.fill_between(x[tail], y[tail], color=red, alpha=0.45,
+                    label=f"Worst {1 - confidence:.0%} of days (beyond VaR)")
+    ax.axvspan(low, high, color=blue, alpha=0.06,
+               label=f"{pct} range: {low:.2f}% to {high:.2f}%")
+
+    ymax = max(y.max(), ax.get_ylim()[1])
+    ax.set_ylim(0, ymax * 1.15)
+    ax.axvline(mu, color=ink, linewidth=1.5)
+    ax.annotate(f"Mean {mu:.2f}%", (mu, ymax * 1.1), xytext=(6, 0),
+                textcoords="offset points", fontsize=9, color=ink, va="top")
+
+    # VaR labels sit left of both VaR lines so they never cross them.
+    ax.axvline(param_var, color=red, linewidth=1.5)
+    ax.axvline(hist_var, color=red, linestyle="--", linewidth=1.5)
+    label_x = min(param_var, hist_var)
+    var_labels = [
+        f"{pct} VaR, normal (solid): {param_var:.2f}%  ${-param_var / 100 * total:,.0f}",
+        f"{pct} VaR, historical (dashed): {hist_var:.2f}%  ${-hist_var / 100 * total:,.0f}",
+    ]
+    for i, text in enumerate(var_labels):
+        ax.annotate(text, (label_x, ymax * (0.55 - 0.08 * i)), xytext=(-8, 0),
+                    textcoords="offset points", fontsize=9, color=ink,
+                    ha="right", va="top")
+
+    ax.set_title(f"Portfolio daily returns vs. normal distribution  "
+                 f"(${total:,.0f}, {pct} confidence)", loc="left",
+                 fontsize=13, color=ink, pad=12)
+    ax.set_xlabel("Daily return (%)", color=muted)
+    ax.set_ylabel("Density", color=muted)
+    ax.tick_params(colors=muted)
+    ax.grid(axis="y", color=grid, linewidth=0.8)
+    ax.set_axisbelow(True)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    for side in ("left", "bottom"):
+        ax.spines[side].set_color(grid)
+
+    stats = (f"Std dev {sigma:.2f}%\n"
+             f"Skew {skew(r):.2f}\n"
+             f"Excess kurtosis {kurtosis(r):.2f}")
+    ax.text(0.99, 0.97, stats, transform=ax.transAxes, ha="right", va="top",
+            fontsize=9, color=muted)
+    ax.legend(loc="upper left", bbox_to_anchor=(0, 0.98), frameon=False, fontsize=9, labelcolor=ink)
+
+    fig.tight_layout()
+    if path:
+        fig.savefig(path, dpi=150)
+    if show:
+        plt.show()
+    plt.close(fig)
+    return path
+
+
+# ---------------------------------------------------------------------------
 # Output
 # ---------------------------------------------------------------------------
 
@@ -225,13 +316,17 @@ def print_report(returns, positions, confidence=CONFIDENCE):
           f"{horizon.loc['1 Day', 'Upper Bound']:.2%}.")
     print("Param = variance-covariance (normal) model; Hist = historical simulation; "
           "CVaR = average loss beyond historical VaR.")
-    return table, horizon
+    return table, horizon, port_returns
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--csv", metavar="PREFIX",
                         help="also save tables to PREFIX_positions.csv and PREFIX_confidence.csv")
+    parser.add_argument("--chart", default="risk_bell_curve.png", metavar="FILE",
+                        help="where to save the bell curve chart (default: %(default)s)")
+    parser.add_argument("--show", action="store_true",
+                        help="also open the bell curve in a window")
     args = parser.parse_args(argv)
 
     print("Stock Portfolio Risk Model")
@@ -248,7 +343,10 @@ def main(argv=None):
     if returns.empty:
         sys.exit("No return data downloaded; check your tickers and connection.")
 
-    table, horizon = print_report(returns, positions)
+    table, horizon, port_returns = print_report(returns, positions)
+    total = table.loc["PORTFOLIO", "Value $"]
+    plot_bell_curve(port_returns, total, path=args.chart, show=args.show)
+    print(f"\nBell curve saved to {args.chart}")
     if args.csv:
         table.to_csv(f"{args.csv}_positions.csv")
         horizon.to_csv(f"{args.csv}_confidence.csv")

@@ -7,7 +7,7 @@ using the last 500 daily returns from Yahoo Finance.
 
 ```bash
 pip install -r requirements.txt
-python risk_portfolio.py              # optional: --csv myportfolio
+python risk_portfolio.py              # options: --csv PREFIX, --chart FILE, --show
 ```
 
 1. Enter the total portfolio value.
@@ -21,6 +21,11 @@ python risk_portfolio.py              # optional: --csv myportfolio
    - **99% confidence table** – for 1 day, 1 week, 2 weeks, 1 month and 1 quarter:
      expected return, the 99% return range (lower/upper bound and the matching
      portfolio values), and the 99% VaR.
+   - **Bell curve chart** (`risk_bell_curve.png`) – histogram of the 500 daily
+     portfolio returns with the fitted normal curve, the 99% range shaded, the
+     worst-1% tail in red, and lines for the mean and the normal vs. historical VaR.
+     Skew and excess kurtosis show how far real returns depart from the bell curve.
+     Use `--show` to open it in a window.
 
 Multi-day figures scale the daily mean by *t* and volatility by √*t*.
 

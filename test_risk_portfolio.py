@@ -51,3 +51,9 @@ def test_confidence_table_scales_with_horizon():
     one_day = t.loc["1 Day"]
     assert one_day["Upper Bound"] - one_day["Lower Bound"] == pytest.approx(2 * 2.5758 * sigma, rel=1e-3)
     assert (t["VaR $"].diff().dropna() > 0).all()
+
+
+def test_plot_bell_curve(tmp_path):
+    r = synthetic_returns() @ pd.Series({"AAA": 0.6, "BBB": 0.4})
+    out = rp.plot_bell_curve(r, 100000, path=tmp_path / "curve.png")
+    assert out.exists() and out.stat().st_size > 0
