@@ -29,8 +29,43 @@ python risk_portfolio.py              # options: --csv PREFIX, --chart FILE, --s
 
 Multi-day figures scale the daily mean by *t* and volatility by √*t*.
 
-## Tests
+## Tests (both programs)
 
 ```bash
 pip install pytest && pytest
 ```
+
+# WACC Calculator
+
+Pulls a company's financial profile from Yahoo Finance and calculates its weighted
+average cost of capital, with a breakdown of every input and where it came from.
+
+```bash
+python wacc_calculator.py AAPL        # ticker is prompted for if omitted
+python wacc_calculator.py MSFT --mrp 5 --debt-method synthetic --csv msft
+```
+
+WACC = E/V × Re + D/V × Rd × (1 − t), with the cost of equity from CAPM (Re = Rf + β × MRP).
+
+| Input | Default source | Override |
+|---|---|---|
+| Risk-free rate | Live 10-year US Treasury yield (`^TNX`) | `--rf 4.3` |
+| Beta | Yahoo Finance 5Y monthly beta (falls back to a regression against the S&P 500) | `--beta 1.1` |
+| Market risk premium | 5.5% | `--mrp 5` |
+| Equity (E) | Market capitalisation | – |
+| Debt (D) | Total debt from the latest balance sheet (book value, incl. leases) | – |
+| Cost of debt | Interest expense ÷ average total debt; if that's implausible (outside 0.5–20%), Rf + a synthetic-rating spread based on interest coverage | `--cost-of-debt 5`, `--debt-method implied\|synthetic` |
+| Tax rate | Effective rate (tax provision ÷ pretax income); 21% if that is negative or over 50% | `--tax-rate 25` |
+
+The report prints:
+- **Inputs**: each rate with its source.
+- **Capital structure & cost of capital**: equity and debt values, weights, costs, and
+  each one's contribution to WACC.
+- **Cross-checks**: regression beta, implied cost of debt, and interest coverage with
+  the synthetic rating, so you can see when Yahoo's figures look off.
+- **Sensitivity grid**: WACC across beta ±0.2 and market risk premium ±1%.
+
+Rates can be given as `4.5`, `4.5%` or `0.045`. The risk-free rate and premium are
+US-based; for non-US companies, pass `--rf` and `--mrp` for the relevant market. The
+synthetic-rating spreads are approximate Damodaran figures (Jan 2025) in
+`RATING_SPREADS`; update them as needed.
