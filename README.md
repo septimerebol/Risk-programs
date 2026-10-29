@@ -42,7 +42,7 @@ average cost of capital, with a breakdown of every input and where it came from.
 
 ```bash
 python wacc_calculator.py AAPL        # ticker is prompted for if omitted
-python wacc_calculator.py MSFT --mrp 5 --debt-method synthetic --csv msft
+python wacc_calculator.py MSFT --mrp 6 --debt-method synthetic --csv msft
 ```
 
 WACC = E/V × Re + D/V × Rd × (1 − t), with the cost of equity from CAPM (Re = Rf + β × MRP).
@@ -51,7 +51,7 @@ WACC = E/V × Re + D/V × Rd × (1 − t), with the cost of equity from CAPM (Re
 |---|---|---|
 | Risk-free rate | Live 10-year US Treasury yield (`^TNX`) | `--rf 4.3` |
 | Beta | Yahoo Finance 5Y monthly beta (falls back to a regression against the S&P 500) | `--beta 1.1` |
-| Market risk premium | 5.5% | `--mrp 5` |
+| Market risk premium | 5% | `--mrp 6` |
 | Equity (E) | Market capitalisation | – |
 | Debt (D) | Total debt from the latest balance sheet (book value, incl. leases) | – |
 | Cost of debt | Interest expense ÷ average total debt; if that's implausible (outside 0.5–20%), Rf + a synthetic-rating spread based on interest coverage | `--cost-of-debt 5`, `--debt-method implied\|synthetic` |

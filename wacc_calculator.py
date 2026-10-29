@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
-MARKET_RISK_PREMIUM = 0.055  # long-run US equity risk premium
+MARKET_RISK_PREMIUM = 0.05   # long-run US equity risk premium
 STATUTORY_TAX_RATE = 0.21    # US federal rate, used when the effective rate is unusable
 DEFAULT_RISK_FREE = 0.0425   # used only if the 10-year yield can't be downloaded
 MARKET_INDEX = "^GSPC"
