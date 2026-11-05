@@ -29,6 +29,30 @@ python risk_portfolio.py              # options: --csv PREFIX, --chart FILE, --s
 
 Multi-day figures scale the daily mean by *t* and volatility by √*t*.
 
+## Bond Pricing Model
+
+`bond_pricing.py` prices a fixed-rate bond and reports its risk measures.
+
+```bash
+python bond_pricing.py --maturity 2034-08-15 --coupon 4.25 --settle 2026-11-05 --price 98.5 \
+    --curve 1:0.039,5:0.041,10:0.044 --cashflows
+```
+
+- Give either `--ytm` or a clean `--price` (per 100 face). The other is solved for.
+- Options: `--freq` (1, 2, 4, 12), `--day-count` (30/360, ACT/ACT, ACT/365, ACT/360),
+  `--face`, `--notional` (position size for $ value and DV01).
+- Output: clean/dirty price and accrued interest, yield to maturity, current yield,
+  Macaulay and modified duration, convexity, DV01, and a ±200bp price/yield table
+  comparing full repricing with the duration and duration+convexity estimates.
+- `--curve` takes continuously compounded zero rates (`tenor:rate` pairs, linearly
+  interpolated). The bond is repriced off the curve, shown as rich or cheap against
+  its market price, and the Z-spread is solved for.
+- Coupon dates are generated backwards from maturity (month-end dates stay at month
+  end). Yields use the street convention, compounded at the coupon frequency.
+
+The functions (`Bond`, `dirty_price`, `yield_to_maturity`, `modified_duration`,
+`convexity`, `dv01`, `ZeroCurve`, `z_spread`, ...) can also be imported and used directly.
+
 ## Tests
 
 ```bash
